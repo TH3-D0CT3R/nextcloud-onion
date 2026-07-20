@@ -1,0 +1,11 @@
+# Whonix-Workstation override: no local tor container. The app is published on
+# the Workstation's internal interface so the Whonix-Gateway's Tor can forward
+# the onion service to it. The Workstation has no clearnet path by design, so
+# this exposes nothing beyond the Gateway link.
+services:
+  app:
+    ports:
+      - "${WHONIX_BIND_IP:?}:8080:80"
+    networks:
+      internal: {}
+      external: {}

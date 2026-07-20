@@ -1,0 +1,11 @@
+# Onion service only: this tor instance is not a client proxy.
+SocksPort 0
+
+DataDirectory /var/lib/tor/data
+
+HiddenServiceDir /var/lib/tor/nextcloud
+# The app container's fixed IP on the compose-internal network
+# (tor does not accept hostnames here).
+HiddenServicePort 80 10.66.99.10:80
+
+Log notice stdout

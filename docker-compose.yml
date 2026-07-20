@@ -1,0 +1,84 @@
+name: nextcloud-onion
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?run setup.sh to generate .env}
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+
+  app:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:34-apache}
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: ${DB_PASSWORD:?}
+      REDIS_HOST: redis
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:?}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
+    volumes:
+      - nextcloud_data:/var/www/html
+    networks:
+      internal:
+        # Fixed address: tor's HiddenServicePort only accepts IPs, not hostnames.
+        ipv4_address: 10.66.99.10
+
+  cron:
+    image: ${NEXTCLOUD_IMAGE:-nextcloud:34-apache}
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - nextcloud_data:/var/www/html
+    networks:
+      - internal
+
+  # Only used in standalone mode. On Whonix the Gateway's Tor provides the
+  # onion service instead (Tor-over-Tor must be avoided there).
+  tor:
+    build: ./tor
+    restart: unless-stopped
+    profiles:
+      - standalone-tor
+    volumes:
+      - tor_keys:/var/lib/tor
+    networks:
+      - internal
+      - external
+
+networks:
+  # No gateway to the outside world: db/redis/app/cron cannot reach or be
+  # reached from anything but each other and the tor container.
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.66.99.0/24
+  external:
+
+volumes:
+  db_data:
+  nextcloud_data:
+  tor_keys:
