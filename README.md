@@ -35,7 +35,7 @@ URL and admin credentials at the end.
 Inside the **Workstation** (everything it does is automatically torified):
 
 ```sh
-git clone https://github.com/<you>/nextcloud-onion.git
+git clone https://github.com/TH3-D0CT3R/nextcloud-onion.git
 cd nextcloud-onion
 ./install.sh
 ```
