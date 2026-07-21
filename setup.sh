@@ -94,17 +94,26 @@ configure_onion() {
 RECOMMENDED_APPS="calendar contacts mail notes tasks spreed richdocuments richdocumentscode"
 
 install_apps() {
-    local app
+    local app out
     log "Installing recommended apps (richdocumentscode is a ~400 MB download — slow over Tor)..."
+    # On Whonix, Docker container traffic bypasses the transparent Tor proxy.
+    # Point Nextcloud explicitly at the Gateway's SOCKS port for the duration.
+    if [ "$MODE" = whonix ]; then
+        occ config:system:set proxy --value="socks5h://10.152.152.10:9050" > /dev/null
+    fi
     for app in $RECOMMENDED_APPS; do
-        if occ app:install "$app" > /dev/null 2>&1; then
+        if out="$(occ app:install "$app" 2>&1)"; then
             log "  installed: $app"
         elif occ app:list --output=json 2>/dev/null | grep -q "\"$app\""; then
             log "  already present: $app"
         else
             warn "  could not install: $app — re-run ./setup.sh later to retry"
+            [ -n "$out" ] && warn "    $out"
         fi
     done
+    if [ "$MODE" = whonix ]; then
+        occ config:system:delete proxy > /dev/null 2>&1 || true
+    fi
 }
 
 # In standalone mode the app container has no internet route by design; attach
@@ -187,6 +196,18 @@ fi
 if [ -n "$ONION" ]; then
     finish_with_onion "$ONION"
     exit 0
+fi
+
+# If the onion is already saved in .env (e.g. re-running after a network fix),
+# skip phase A entirely and go straight to finishing.
+if [ "$MODE" = whonix ]; then
+    saved_onion="$(env_get NEXTCLOUD_TRUSTED_DOMAINS)"
+    if echo "$saved_onion" | grep -Eq '^[a-z2-7]{56}\.onion$'; then
+        log "Onion address already configured ($saved_onion) — skipping to app install."
+        compose up -d
+        finish_with_onion "$saved_onion"
+        exit 0
+    fi
 fi
 
 # ---------------------------------------------------------------- standalone ---
