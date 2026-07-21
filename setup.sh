@@ -102,10 +102,13 @@ install_apps() {
         occ config:system:set proxy --value="socks5h://10.152.152.10:9050" > /dev/null
     fi
     for app in $RECOMMENDED_APPS; do
-        if out="$(occ app:install "$app" 2>&1)"; then
+        if occ app:list --output=json 2>/dev/null | grep -q "\"$app\""; then
+            occ app:enable "$app" > /dev/null 2>&1 || true
+            log "  enabled (bundled): $app"
+        elif occ app:enable "$app" > /dev/null 2>&1; then
+            log "  enabled: $app"
+        elif out="$(occ app:install "$app" 2>&1)"; then
             log "  installed: $app"
-        elif occ app:list --output=json 2>/dev/null | grep -q "\"$app\""; then
-            log "  already present: $app"
         else
             warn "  could not install: $app — re-run ./setup.sh later to retry"
             [ -n "$out" ] && warn "    $out"
