@@ -96,11 +96,6 @@ RECOMMENDED_APPS="calendar contacts mail notes tasks spreed richdocuments richdo
 install_apps() {
     local app out
     log "Installing recommended apps (richdocumentscode is a ~400 MB download — slow over Tor)..."
-    # On Whonix, Docker container traffic bypasses the transparent Tor proxy.
-    # Point Nextcloud explicitly at the Gateway's SOCKS port for the duration.
-    if [ "$MODE" = whonix ]; then
-        occ config:system:set proxy --value="socks5h://10.152.152.10:9050" > /dev/null
-    fi
     for app in $RECOMMENDED_APPS; do
         if occ app:list --output=json 2>/dev/null | grep -q "\"$app\""; then
             occ app:enable "$app" > /dev/null 2>&1 || true
@@ -114,9 +109,6 @@ install_apps() {
             [ -n "$out" ] && warn "    $out"
         fi
     done
-    if [ "$MODE" = whonix ]; then
-        occ config:system:delete proxy > /dev/null 2>&1 || true
-    fi
 }
 
 # In standalone mode the app container has no internet route by design; attach

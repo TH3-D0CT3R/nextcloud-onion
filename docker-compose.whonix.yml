@@ -2,10 +2,20 @@
 # the Workstation's internal interface so the Whonix-Gateway's Tor can forward
 # the onion service to it. The Workstation has no clearnet path by design, so
 # this exposes nothing beyond the Gateway link.
+#
+# https_proxy / http_proxy: Docker container traffic bypasses Whonix's
+# transparent Tor proxy, so we point curl explicitly at the Gateway's SOCKS
+# port. This is used only when the container needs outbound access (app
+# installs). no_proxy excludes internal Docker services and localhost so
+# the built-in CODE server and DB connections are not affected.
 services:
   app:
     ports:
       - "${WHONIX_BIND_IP:?}:8080:80"
+    environment:
+      https_proxy: "socks5h://10.152.152.10:9050"
+      http_proxy: "socks5h://10.152.152.10:9050"
+      no_proxy: "localhost,127.0.0.1,db,redis,10.66.99.0/24"
     networks:
       internal: {}
       external: {}
